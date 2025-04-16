@@ -36,3 +36,5 @@ This is a code sample for the blog post `Streaming Multi-channel Audio to Amazon
 4. Run `bun install`
 
 5. Run `bun dev` and navigate to http://localhost:5173/
+
+6. Your browser will prompt you to grant microphone access, which you'll need to allow. If no microphones are detected, try resetting the permissions in your browser settings.
