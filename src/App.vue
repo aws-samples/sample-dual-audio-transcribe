@@ -106,6 +106,15 @@ function stop() {
     }
   }
   started.value = false
+
+  /**
+   * You might also want to stop the audioProcessorWorklet after this.
+   * Using the audioWorkletNode instance, post this message:
+    audioWorkletNode.port.postMessage({
+      message: 'UPDATE_RECORDING_STATE',
+      setRecording: false,
+    })
+  **/
 }
 
 async function start() {

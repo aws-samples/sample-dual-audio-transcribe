@@ -79,7 +79,6 @@ async function transcribeClient() {
   return client
 }
 
-
 const getAudioStream = async function* (
   audioDataIterator: AsyncIterableIterator<MessageEvent<AudioWorkletMessageDataType>>,
 ) {
