@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { startTranscribe } from './stream'
+import { startTranscribe, SAMPLE_RATE } from './stream'
 import type { LanguageCode, Result } from '@aws-sdk/client-transcribe-streaming'
 
 import MicrophonesSelection from './components/MicrophonesSelection.vue'
@@ -85,9 +85,9 @@ async function getMediaStreams(devices: MediaDeviceInfo[]) {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: device.deviceId,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
       },
     })
 
@@ -156,6 +156,7 @@ const dataB = computed(() => data.value.filter((d) => d.ChannelId === 'ch_1' && 
           </option>
         </select>
       </div>
+      <div>Sample Rate: {{ SAMPLE_RATE }}</div>
 
       <div style="margin-top: 15px">
         <button v-if="audioInputs && !started" @click="start" class="button button-start">

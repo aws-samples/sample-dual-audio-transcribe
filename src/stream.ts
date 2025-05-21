@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   LanguageCode,
   MediaEncoding,
   type Result,
@@ -15,7 +16,7 @@ type AudioWorkletMessageDataType = {
   audioData: Uint8Array
 }
 
-const SAMPLE_RATE = 16000
+export const SAMPLE_RATE = window.navigator.userAgent.includes('Firefox') ? 44100 : 16000
 
 export async function getAudioIterator(mediaStreams: MediaStream[]) {
   const audioContext = new AudioContext({
@@ -57,14 +58,18 @@ export async function getAudioIterator(mediaStreams: MediaStream[]) {
     console.log(`Error from audio worklet ${error}`)
   }
 
+  // Required for Firefox compatibility
+  audioWorkletNode.port.onmessage = () => {}
+
   merger.connect(audioWorkletNode)
 
   const audioDataIterator = pEventIterator<'message', MessageEvent<AudioWorkletMessageDataType>>(
     audioWorkletNode.port,
     'message',
+    { resolutionEvents: ['STOP_RECORDING_BUFFER'] },
   )
 
-  return audioDataIterator
+  return { audioDataIterator, audioWorkletNode }
 }
 
 async function transcribeClient() {
@@ -99,33 +104,47 @@ export async function startTranscribe(
   languageCode: LanguageCode,
   callback: (result: Result) => void,
 ) {
-  const client = await transcribeClient()
+  const { audioDataIterator, audioWorkletNode } = await getAudioIterator(mediaStreams)
 
-  const audioIterator = await getAudioIterator(mediaStreams)
+  try {
+    const client = await transcribeClient()
 
-  const command = new StartStreamTranscriptionCommand({
-    LanguageCode: languageCode,
-    MediaEncoding: MediaEncoding.PCM,
-    MediaSampleRateHertz: SAMPLE_RATE,
-    NumberOfChannels: 2,
-    EnableChannelIdentification: true,
-    ShowSpeakerLabel: true,
-    AudioStream: getAudioStream(audioIterator),
-  })
+    const command = new StartStreamTranscriptionCommand({
+      LanguageCode: languageCode,
+      MediaEncoding: MediaEncoding.PCM,
+      MediaSampleRateHertz: SAMPLE_RATE,
+      NumberOfChannels: 2,
+      EnableChannelIdentification: true,
+      ShowSpeakerLabel: true,
+      AudioStream: getAudioStream(audioDataIterator),
+    })
 
-  const data = await client.send(command)
+    const data = await client.send(command)
 
-  if (!data.TranscriptResultStream || data.$metadata.httpStatusCode !== 200) return
-  for await (const event of data.TranscriptResultStream) {
-    if (event?.TranscriptEvent?.Transcript)
-      for (const result of event.TranscriptEvent.Transcript.Results || []) {
-        if (result) {
-          callback({ ...result })
+    if (!data.TranscriptResultStream || data.$metadata.httpStatusCode !== 200) return
+    for await (const event of data.TranscriptResultStream) {
+      if (event?.TranscriptEvent?.Transcript)
+        for (const result of event.TranscriptEvent.Transcript.Results || []) {
+          if (result) {
+            console.log(result)
+            callback({ ...result })
+          }
         }
+      else {
+        console.error(event)
+        throw new Error('Transcribe Stream exception')
       }
-    else {
-      console.error(event)
-      throw new Error('Transcribe Stream exception')
     }
+  } catch (e) {
+    if (e instanceof BadRequestException) {
+      console.log('Transcribe stream disconnected after 15 seconds')
+    } else {
+      console.error(e)
+    }
+
+    audioWorkletNode.port.postMessage({
+      message: 'UPDATE_RECORDING_STATE',
+      setRecording: false,
+    })
   }
 }

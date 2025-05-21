@@ -13,7 +13,9 @@ const roleDeviceMap = ref<{ A: string | undefined; B: string | undefined }>({
 const emit = defineEmits(['audioInputs'])
 
 async function listAudioDevices() {
-  await navigator.mediaDevices.getUserMedia({ audio: true })
+  await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  })
   const devices = await navigator.mediaDevices.enumerateDevices()
   return devices.filter((d) => d.kind === 'audioinput')
 }

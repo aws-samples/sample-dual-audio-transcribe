@@ -36,6 +36,8 @@ class RecordingProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs) {
+    if (!inputs.length || !inputs[0].length) return
+
     for (let input = 0; input < 1; input++) {
       for (let channel = 0; channel < this.numberOfChannels; channel++) {
         for (let sample = 0; sample < inputs[input][channel].length; sample++) {
@@ -85,7 +87,11 @@ class RecordingProcessor extends AudioWorkletProcessor {
         this.framesSinceLastPublish = 0
       }
     } else {
-      console.log('stopping worklet processor node')
+      this.port.postMessage({
+        message: 'STOP_RECORDING_BUFFER',
+      })
+
+      console.log('Stopping worklet processor')
       this.recordedFrames = 0
       this.framesSinceLastPublish = 0
       return false
