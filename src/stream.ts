@@ -16,6 +16,7 @@ type AudioWorkletMessageDataType = {
   audioData: Uint8Array
 }
 
+// Use 44100 for Firefox
 export const SAMPLE_RATE = window.navigator.userAgent.includes('Firefox') ? 44100 : 16000
 
 export async function getAudioIterator(mediaStreams: MediaStream[]) {
